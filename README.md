@@ -150,3 +150,98 @@ https://myanimelist.net/anime/season/2024/winter
 
 Hubert Jabłoński
 
+<script>
+function wczytajSkrypt(src) {
+  return new Promise(function (ok, blad) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = ok;
+    s.onerror = function () { blad(new Error('Nie można wczytać: ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+
+function utrwalStan(k) {
+  k.querySelectorAll('input').forEach(function (el) {
+    if (el.type === 'radio' || el.type === 'checkbox') {
+      if (el.checked) el.setAttribute('checked', 'checked'); else el.removeAttribute('checked');
+    } else if (el.type !== 'file' && el.type !== 'password') {
+      el.setAttribute('value', el.value);
+    }
+  });
+  k.querySelectorAll('textarea').forEach(function (el) { el.textContent = el.value; });
+  k.querySelectorAll('select').forEach(function (s) {
+    Array.prototype.forEach.call(s.options, function (o) {
+      if (o.selected) o.setAttribute('selected', 'selected'); else o.removeAttribute('selected');
+    });
+  });
+}
+
+function nazwaPDF() {
+  var d = new Date();
+  function z(n) { return (n < 10 ? '0' : '') + n; }
+  return 'dokument_' + d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) +
+         '_' + z(d.getHours()) + z(d.getMinutes()) + '.pdf';
+}
+
+var pdfTrwa = false;
+
+async function savePDF() {
+  if (pdfTrwa) return;
+  pdfTrwa = true;
+  document.body.style.cursor = 'wait';
+
+  try {
+    if (typeof html2canvas === 'undefined')
+      await wczytajSkrypt('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if (!window.jspdf)
+      await wczytajSkrypt('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+    var dok = document.getElementById('dokument');
+    var strony = dok.querySelectorAll('.page');
+    if (!strony.length) { alert('Brak stron .page'); return; }
+
+    utrwalStan(dok);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+    var pdf = null;
+
+    for (var i = 0; i < strony.length; i++) {
+      var str = strony[i];
+      var pozioma = str.offsetWidth > str.offsetHeight;
+      var orient = pozioma ? 'landscape' : 'portrait';
+
+      var canvas = await html2canvas(str, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: -window.scrollY
+      });
+      var img = canvas.toDataURL('image/jpeg', 0.95);
+
+      if (i === 0) {
+        pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a5', orientation: orient });
+      } else {
+        pdf.addPage('a5', orient);
+      }
+
+      var W = pdf.internal.pageSize.getWidth();
+      var H = pdf.internal.pageSize.getHeight();
+      var r = canvas.width / canvas.height;
+      var w = W, h = W / r;
+      if (h > H) { h = H; w = H * r; }
+
+      pdf.addImage(img, 'JPEG', 0, 0, w, h, undefined, 'FAST');
+    }
+
+    pdf.save(nazwaPDF());
+  } catch (e) {
+    console.error(e);
+    alert('Błąd PDF: ' + e.message);
+  } finally {
+    pdfTrwa = false;
+    document.body.style.cursor = '';
+  }
+}
+</script>
