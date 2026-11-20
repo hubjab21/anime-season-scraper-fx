@@ -150,27 +150,19 @@ https://myanimelist.net/anime/season/2024/winter
 
 Hubert Jabłoński
 
-# savePDF
-
-Zapisuje `#dokument` do PDF – każdy `div.page` to osobna strona A5.
-
-Przycisk:
-
-```html
-<button type="button" onclick="savePDF()">Zapisz PDF</button>
-```
-
-Skrypt (wkleić przed `</body>`):
-
-```html
 <script>
-function wczytajSkrypt(src) {
+function wczytajSkrypt(adresy) {
   return new Promise(function (ok, blad) {
-    var s = document.createElement('script');
-    s.src = src;
-    s.onload = ok;
-    s.onerror = function () { blad(new Error('Nie można wczytać: ' + src)); };
-    document.head.appendChild(s);
+    var i = 0;
+    function nastepny() {
+      if (i >= adresy.length) { blad(new Error('Nie można wczytać: ' + adresy[0])); return; }
+      var s = document.createElement('script');
+      s.src = adresy[i++];
+      s.onload = ok;
+      s.onerror = function () { s.remove(); nastepny(); };
+      document.head.appendChild(s);
+    }
+    nastepny();
   });
 }
 
@@ -205,10 +197,16 @@ async function savePDF() {
   document.body.style.cursor = 'wait';
 
   try {
-    if (typeof html2canvas === 'undefined')
-      await wczytajSkrypt('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if (!window.htmlToImage)
+      await wczytajSkrypt([
+        'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js',
+        'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js'
+      ]);
     if (!window.jspdf)
-      await wczytajSkrypt('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      await wczytajSkrypt([
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+      ]);
 
     var dok = document.getElementById('dokument');
     var strony = dok.querySelectorAll('.page');
@@ -221,15 +219,14 @@ async function savePDF() {
 
     for (var i = 0; i < strony.length; i++) {
       var str = strony[i];
-      var pozioma = str.offsetWidth > str.offsetHeight;
-      var orient = pozioma ? 'landscape' : 'portrait';
+      var orient = str.offsetWidth > str.offsetHeight ? 'landscape' : 'portrait';
 
-      var canvas = await html2canvas(str, {
-        scale: 3,
-        useCORS: true,
+      var canvas = await htmlToImage.toCanvas(str, {
+        pixelRatio: 3,
         backgroundColor: '#ffffff',
-        scrollX: 0,
-        scrollY: -window.scrollY
+        width: str.offsetWidth,
+        height: str.offsetHeight,
+        style: { margin: '0', transform: 'none' }
       });
       var img = canvas.toDataURL('image/jpeg', 0.95);
 
@@ -251,13 +248,13 @@ async function savePDF() {
     pdf.save(nazwaPDF());
   } catch (e) {
     console.error(e);
-    alert('Błąd PDF: ' + e.message);
+    alert('Błąd PDF: ' + (e && e.message ? e.message : e));
   } finally {
     pdfTrwa = false;
     document.body.style.cursor = '';
   }
 }
 </script>
+
 ```
 }
-</script>
