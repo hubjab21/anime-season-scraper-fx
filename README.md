@@ -150,6 +150,19 @@ https://myanimelist.net/anime/season/2024/winter
 
 Hubert Jabłoński
 
+# savePDF
+
+Zapisuje `#dokument` do PDF – każdy `div.page` to osobna strona A5.
+
+Przycisk:
+
+```html
+<button type="button" onclick="savePDF()">Zapisz PDF</button>
+```
+
+Skrypt (wkleić przed `</body>`):
+
+```html
 <script>
 function wczytajSkrypt(adresy) {
   return new Promise(function (ok, blad) {
@@ -255,6 +268,7 @@ async function savePDF() {
   }
 }
 </script>
+```
 
 ```
 }
